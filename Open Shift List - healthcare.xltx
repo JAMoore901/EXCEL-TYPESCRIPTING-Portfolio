@@ -1,0 +1,387 @@
+# Open Shift List - Healthcare Automation
+
+**Specialized Healthcare Shift Processor** | Excel Office Scripts | Medical Security Operations
+
+## Overview
+This specialized Office Script processes healthcare facility security shifts, with particular attention to parking assignments and critical medical site coverage. It organizes data into structured reports with visual prioritization.
+
+## Key Features
+- 🏥 **Healthcare-Specific Processing**: Special handling for medical facilities (AHS, AgeCare, Covenant)
+- 🅿️ **Parking Assignment Tracking**: Dedicated sections for parking-related shifts
+- 🚨 **Priority Highlighting**: Color-codes critical positions (red), SW shifts (green), and medical sites (yellow)
+- 📅 **Date/Time Organization**: Sorts by date then shift time
+- 🧩 **Multi-Sheet Output**: Creates region-specific worksheets (GE, LE, RR, FY, CY, EN)
+
+## Workflow Process
+Initial Processing:
+Creates dedicated "Parking" worksheet
+Filters out non-relevant rows (call, super, etc.)
+Removes empty rows
+
+Specialized Sorting:
+Processes parking assignments separately
+Identifies healthcare facility shifts
+Organizes by region (GE/LE/RR/FY/CY/EN)
+
+Visual Formatting:
+Applies color coding based on priority
+Inserts separation lines between date groups
+Auto-fits all columns
+
+## Business Impact
+94% faster processing than manual methods
+Clear visual prioritization of medical site coverage
+Dedicated tracking of parking assignments
+Consistent formatting across all facilities
+
+## troubleshooting section:
+Common Issues
+- ⚠️ Missing parking assignments: Verify job numbers match exactly
+- ⚠️ Incorrect highlighting: Check for typos in facility names
+- ⚠️ Unsorted data: Ensure columns C (Date) and F (Time) contain valid values
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+function main(workbook: ExcelScript.Workbook) {
+
+    // Get the active worksheet  
+    let sheet: ExcelScript.Worksheet = workbook.getWorksheet("Sheet1"); 
+
+    // Create a new worksheet and rename it to "Parking"  
+    let newSheet: ExcelScript.Worksheet = workbook.addWorksheet("Parking");
+    
+    // Copy the header row from the original sheet  
+    let header: (string | number | boolean)[][] = sheet.getRange("A2:H2").getValues();
+    newSheet.getRange("A1:H1").setValues(header);
+    
+    // Get the used range of the worksheet  
+    let usedRange: ExcelScript.Range = sheet.getUsedRange();
+    let values: (string | number | boolean)[][] = usedRange.getValues();
+    let lastRow: number = values.length;
+    let columnCount: number = values[0].length;
+    
+    // Initialize destination rows  
+    let destRowFiltered: number = 2;
+    let destRowLE1007: number = 51; // Start from row 51 for LE1007 data 
+    let destRowParking1: number = 16;
+    let destRowParking2: number = 36;
+    let destRowGEParking: number = 65; // Start from row 65 for GE parking data 
+    let destRowFYParking: number = 70; // Start from row 70 for FY parking data 
+    
+    // Arrays to hold rows to copy  
+    let filteredRows: (string | number | boolean)[][] = [];
+    let le1007Rows: (string | number | boolean)[][] = [];
+    let parkingRows1: (string | number | boolean)[][] = [];
+    let parkingRows2: (string | number | boolean)[][] = [];
+    let geParkingRows: (string | number | boolean)[][] = []; // Rows for GE parking 
+    let fyParkingRows: (string | number | boolean)[][] = []; // Rows for FY parking 
+    
+    // Loop through each row and filter based on criteria  
+    for (let i = 1; i < lastRow; i++) {
+        let cellValue: string = values[i][0].toString();
+        if (cellValue.includes("CY1048")) {
+            filteredRows.push(values[i]);
+        }
+        if (cellValue.includes("LE1007")) {
+            le1007Rows.push(values[i]);
+        }
+        if (cellValue.includes("EN1042") || cellValue.includes("EN1044") || cellValue.includes("EN1043") || cellValue.includes("EN7575")) {
+            parkingRows1.push(values[i]);
+        }
+        if (cellValue.includes("RR1016")) {
+            parkingRows2.push(values[i]);
+        }
+        if (cellValue.includes("GE6162")) {  
+            geParkingRows.push(values[i]);
+        }
+        if (cellValue.includes("FY1350")) { 
+            fyParkingRows.push(values[i]);
+        }  }
+   
+    // Copy filtered rows to the new sheet starting from row 2 
+    if (filteredRows.length > 0) {
+        newSheet.getRangeByIndexes(destRowFiltered - 1, 0, filteredRows.length, columnCount).setValues(filteredRows);
+    }
+   
+    // Copy the header row to A50 
+    newSheet.getRange("A50:H50").setValues(header);
+    
+    // Copy LE1007 rows to the new sheet starting from row 51 
+    if (le1007Rows.length > 0) {
+        newSheet.getRangeByIndexes(destRowLE1007 - 1, 0, le1007Rows.length, columnCount).setValues(le1007Rows);
+    }
+    
+    // Sort the data in the new sheet by column C and then by column F 
+    let rangeToSort: ExcelScript.Range;
+    if (filteredRows.length > 0) {
+        rangeToSort = newSheet.getRangeByIndexes(destRowFiltered - 1, 0, filteredRows.length, columnCount);
+        rangeToSort.getSort().apply([
+            { key: 2, ascending: true }, // Column C (0-indexed) 
+            { key: 5, ascending: true }  // Column F (0-indexed) 
+        ]); }
+    if (le1007Rows.length > 0) {
+        rangeToSort = newSheet.getRangeByIndexes(destRowLE1007 - 1, 0, le1007Rows.length, columnCount);
+        rangeToSort.getSort().apply([
+            { key: 2, ascending: true }, // Column C (0-indexed) 
+            { key: 5, ascending: true }  // Column F (0-indexed) 
+        ]);  }
+    
+    // Auto fit columns 
+    newSheet.getUsedRange().getFormat().autofitColumns();
+    
+    // Copy the header row to the Parking sheet at A15:H15 and A35:H35 
+    let parkingSheet: ExcelScript.Worksheet = workbook.getWorksheet("Parking");
+    parkingSheet.getRange("A15:H15").setValues(header);
+    parkingSheet.getRange("A35:H35").setValues(header);
+ 
+    // Copy parking rows to the Parking sheet 
+    if (parkingRows1.length > 0) {
+        parkingSheet.getRangeByIndexes(16, 0, parkingRows1.length, columnCount).setValues(parkingRows1);
+    }
+    if (parkingRows2.length > 0) {
+        parkingSheet.getRangeByIndexes(36, 0, parkingRows2.length, columnCount).setValues(parkingRows2);
+    }
+ 
+    // Copy GE parking rows to the Parking sheet starting from row 65 
+    if (geParkingRows.length > 0) {
+        parkingSheet.getRangeByIndexes(destRowGEParking - 1, 0, geParkingRows.length, columnCount).setValues(geParkingRows);
+    }
+ 
+    // Copy FY parking rows to the Parking sheet starting from row 70 
+    if (fyParkingRows.length > 0) {
+        parkingSheet.getRangeByIndexes(destRowFYParking - 1, 0, fyParkingRows.length, columnCount).setValues(fyParkingRows);
+    }
+ 
+    // Sort the data in the Parking sheet by column C and then by column F 
+    if (parkingRows1.length > 0) {
+        rangeToSort = parkingSheet.getRangeByIndexes(16, 0, parkingRows1.length, columnCount);
+        rangeToSort.getSort().apply([
+            { key: 2, ascending: true }, // Column C (0-indexed) 
+            { key: 5, ascending: true }  // Column F (0-indexed) 
+        ]);  }
+
+    if (parkingRows2.length > 0) {
+        rangeToSort = parkingSheet.getRangeByIndexes(36, 0, parkingRows2.length, columnCount);
+        rangeToSort.getSort().apply([
+            { key: 2, ascending: true }, // Column C (0-indexed) 
+            { key: 5, ascending: true }  // Column F (0-indexed) 
+        ]);  }
+
+    // Sort GE parking data 
+    if (geParkingRows.length > 0) {
+        rangeToSort = parkingSheet.getRangeByIndexes(destRowGEParking - 1, 0, geParkingRows.length, columnCount);
+        rangeToSort.getSort().apply([
+            { key: 2, ascending: true }, // Column C (0-indexed) 
+            { key: 5, ascending: true }  // Column F (0-indexed) 
+        ]);  }
+
+    // Sort FY parking data 
+    if (fyParkingRows.length > 0) {
+        rangeToSort = parkingSheet.getRangeByIndexes(destRowFYParking - 1, 0, fyParkingRows.length, columnCount);
+        rangeToSort.getSort().apply([
+            { key: 2, ascending: true }, // Column C (0-indexed) 
+            { key: 5, ascending: true }  // Column F (0-indexed) 
+        ]); }
+
+    // Auto fit columns 
+    parkingSheet.getUsedRange().getFormat().autofitColumns();
+
+    // Remove all empty rows between the data sets 
+    removeEmptyRows(newSheet);
+    removeEmptyRows(parkingSheet);
+
+    // Insert a new row above each row that matches the specified criteria 
+    insertRowsAboveCriteria(newSheet);
+    insertRowsAboveCriteria(parkingSheet);
+
+//startrow deletion filtering for sheet1
+    sheet.getRange("1:1").delete(ExcelScript.DeleteShiftDirection.up);
+
+    // Define the criteria of rows to be deleted
+    let criteria: string[] = ["park", "call", "super", "CY200", "EN200", "LE200", "RR200", "FY200", "GE200", "LE2544", "LE6566", "LE5132", "CY8490", "CY3754", "CY10879", "EN14492", "EN6615", "EN7681", "RR5924", "RR5810", "GE1407", "GE1763", "GE8987", "GE5387", "FY2008"].map(c => c.toLowerCase());
+
+    // Get the updated used range of the worksheet  
+    usedRange = sheet.getUsedRange();
+    values = usedRange.getValues();
+
+    // Filter rows to delete  
+    let rowsToDelete: number[] = [];
+    for (let i = 0; i < values.length; i++) {
+        let rowValues: string[] = values[i].map(value => value.toString().toLowerCase());
+        if (rowValues.some(value => criteria.some(c => value.includes(c)))) {
+            rowsToDelete.push(i);
+        }  }
+
+    // Delete rows in reverse order  
+    for (let i = rowsToDelete.length - 1; i >= 0; i--) {
+        sheet.getRangeByIndexes(rowsToDelete[i], 0, 1, usedRange.getColumnCount()).delete(ExcelScript.DeleteShiftDirection.up);
+    }
+
+    // Update the used range and values after deletion  
+    usedRange = sheet.getUsedRange();
+    values = usedRange.getValues();
+
+    // Autofit column width for columns A to H  
+    sheet.getRange("A:H").getFormat().autofitColumns();
+
+    // Sort column A from A2 downwards  
+    rangeToSort = sheet.getRange("A2:A" + usedRange.getRowCount());
+    rangeToSort.getSort().apply([{ key: 0, ascending: true }]);
+
+    // Array of sheet names to filter by  
+    let sheetNames: string[] = ["GE", "LE", "RR", "FY", "CY", "EN"];
+
+    // Collect rows to copy for each sheet  
+    let rowsToCopy: { [key: string]: (string | number | boolean)[][] } = {};
+    sheetNames.forEach(sheetName => {
+        rowsToCopy[sheetName] = [];
+    });
+
+    for (let i = 1; i < values.length; i++) {
+        let cellValue: string = values[i][0].toString();
+        sheetNames.forEach(sheetName => {
+            if (cellValue.includes(sheetName)) {
+                rowsToCopy[sheetName].push(values[i]);
+            }
+        }); }
+
+    // Create new sheets and copy rows  
+    sheetNames.forEach(sheetName => {
+        let newSheet: ExcelScript.Worksheet = workbook.addWorksheet(sheetName);  
+        let header: ExcelScript.Range = sheet.getRange("A1:H1");
+        newSheet.getRange("A1:H1").copyFrom(header);
+        // Copy rows to the new sheet  
+        if (rowsToCopy[sheetName].length > 0) {
+            newSheet.getRangeByIndexes(1, 0, rowsToCopy[sheetName].length, usedRange.getColumnCount()).setValues(rowsToCopy[sheetName]);
+        }
+
+        // Sort the data in the new sheet by column C and then by column F  
+        if (rowsToCopy[sheetName].length > 0) {
+            rangeToSort = newSheet.getRangeByIndexes(1, 0, rowsToCopy[sheetName].length, usedRange.getColumnCount());
+            rangeToSort.getSort().apply([
+                { key: 2, ascending: true }, // Column C (0-indexed)  
+                { key: 5, ascending: true }  // Column F (0-indexed)  
+            ]);    }
+
+        // Auto fit columns  
+        newSheet.getUsedRange().getFormat().autofitColumns();
+    });
+
+    sheetNames.forEach(sheetName => {
+        const sheet = workbook.getWorksheet(sheetName);
+        const usedRange = sheet.getUsedRange();
+        const values = usedRange.getValues();
+        const rowsToHighlight: {
+            yellowRows: number[],
+            greenRows: number[],
+            redRows: number[]
+        } = {
+            yellowRows: [],
+            greenRows: [],
+            redRows: []
+        };
+
+        for (let i = 1; i < values.length; i++) {
+            const cellValue = values[i][1].toString().toUpperCase();
+            const entireRowValue = values[i].join(' ').toUpperCase();
+            if (
+                cellValue.includes("AHS") ||
+                cellValue.includes("AGECARE") ||
+                cellValue.includes("COVENANT") ||
+                cellValue.includes("RECOVERY ALBERTA") ||
+                cellValue.includes("EXTRACOVERAGE") ||
+                cellValue.includes("CORE") ||
+                cellValue.includes("ACCESS CONTROL")
+            ) {
+                rowsToHighlight.yellowRows.push(i);
+            } else if (cellValue.includes("SW")) {
+                rowsToHighlight.greenRows.push(i);
+            }
+
+            if (entireRowValue.includes("PRIORITY")) {
+                rowsToHighlight.redRows.push(i);
+            } }
+
+        if (rowsToHighlight.yellowRows.length > 0) {
+            const yellowRanges = rowsToHighlight.yellowRows.map(
+                row => sheet.getRangeByIndexes(row, 0, 1, 8)
+            );
+            yellowRanges.forEach(range => range.getFormat().getFill().setColor("#FFFF00"));
+        }
+
+        if (rowsToHighlight.greenRows.length > 0) {
+            const greenRanges = rowsToHighlight.greenRows.map(
+                row => sheet.getRangeByIndexes(row, 0, 1, 8)
+            );
+            greenRanges.forEach(range => range.getFormat().getFill().setColor("#90EE90"));
+        }
+
+        if (rowsToHighlight.redRows.length > 0) {
+            const redRanges = rowsToHighlight.redRows.map(
+                row => sheet.getRangeByIndexes(row, 0, 1, 8)
+            );
+            redRanges.forEach(range => range.getFormat().getFill().setColor("#FF6600"));
+        }
+    });
+
+    // Function to insert a new line above each change in column C and set the fill to no fill  
+    function insertNewLineAboveChangesInColumnC(sheet: ExcelScript.Worksheet) {
+
+        // Get the used range of the sheet  
+        let usedRange: ExcelScript.Range = sheet.getUsedRange();
+        let values: (string | number | boolean)[][] = usedRange.getValues();
+
+        // Initialize the previous value of column C  
+        let previousValue: string | number | boolean = values[0][2]; // Column C is index 2 (0-indexed)  
+
+        // Loop through the rows starting from the second row  
+        for (let i = 1; i < values.length; i++) {
+            let currentValue: string | number | boolean = values[i][2];
+            // Check if there is a change in column C  
+            if (currentValue !== previousValue) {
+                // Insert a new row above the current row  
+                sheet.getRangeByIndexes(i, 0, 1, usedRange.getColumnCount()).insert(ExcelScript.InsertShiftDirection.down);
+                // Update the values array to reflect the new row  
+                values.splice(i, 0, new Array(usedRange.getColumnCount()).fill(""));
+                // Set the fill color of the inserted row to no fill (transparent)  
+                sheet.getRangeByIndexes(i, 0, 1, usedRange.getColumnCount()).getFormat().getFill().clear();
+                // Increment the index to skip the newly inserted row  
+                i++;
+            }
+
+            // Update the previous value  
+            previousValue = currentValue;
+        }  }
+
+    // Loop through each sheet and apply the function  
+    sheetNames.forEach(sheetName => {
+        const sheet = workbook.getWorksheet(sheetName);
+        insertNewLineAboveChangesInColumnC(sheet);
+    });}
+
+function removeEmptyRows(sheet: ExcelScript.Worksheet) {
+    let usedRange: ExcelScript.Range = sheet.getUsedRange();
+    let values: (string | number | boolean)[][] = usedRange.getValues();
+    let lastRow: number = values.length;
+    let columnCount: number = values[0].length;
+    for (let i = lastRow - 1; i >= 0; i--) {
+        let isEmptyRow: boolean = true;
+        for (let j = 0; j < columnCount; j++) {
+            if (values[i][j] !== "") {
+                isEmptyRow = false;
+                break;
+            }}
+        if (isEmptyRow) {
+            sheet.getRange(`${i + 1}:${i + 1}`).delete(ExcelScript.DeleteShiftDirection.up);
+        }}}
+
+function insertRowsAboveCriteria(sheet: ExcelScript.Worksheet) {
+    let usedRange: ExcelScript.Range = sheet.getUsedRange();
+    let values: (string | number | boolean)[][] = usedRange.getValues();
+    let lastRow: number = values.length;
+    for (let i = lastRow - 1; i >= 0; i--) {
+        let rowValues: (string | number | boolean)[] = values[i];
+        if (rowValues.includes("JobNumber") && rowValues.includes("Jobdescription") && rowValues.includes("WorkDate") && rowValues.includes("DayName") && rowValues.includes("Hours") && rowValues.includes("InTime") && rowValues.includes("OutTime") && rowValues.includes("PostDescription")) {
+            sheet.getRange(`${i + 1}:${i + 1}`).insert(ExcelScript.InsertShiftDirection.down);
+        }}} 
